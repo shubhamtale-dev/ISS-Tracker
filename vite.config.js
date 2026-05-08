@@ -13,7 +13,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
           charts: ['recharts'],
           map: ['leaflet', 'react-leaflet'],
           motion: ['framer-motion'],
