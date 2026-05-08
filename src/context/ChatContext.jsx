@@ -61,35 +61,41 @@ async function callHuggingFace(messages, issData, newsData) {
 
   const prompt = `<s>[INST] ${SYSTEM_PROMPT}\n\n${ctx}\n\nConversation:\n${conversationText} [/INST]`;
 
-  const res = await fetch(
-    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 300,
-          temperature: 0.3,
-          top_p: 0.9,
-          do_sample: true,
-          return_full_text: false,
+  try {
+    const res = await fetch(
+      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-      }),
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 300,
+            temperature: 0.3,
+            top_p: 0.9,
+            do_sample: true,
+            return_full_text: false,
+          },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.warn('Mistral API error, falling back to simulation:', err);
+      return simulateResponse(messages[messages.length - 1]?.content || '', issData, newsData);
     }
-  );
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    const data = await res.json();
+    const raw = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text;
+    return (raw || '').trim() || 'I can only answer questions related to the dashboard data.';
+  } catch (err) {
+    console.warn('Mistral API failed, using simulation mode:', err);
+    return simulateResponse(messages[messages.length - 1]?.content || '', issData, newsData);
   }
-
-  const data = await res.json();
-  const raw = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text;
-  return (raw || '').trim() || 'I can only answer questions related to the dashboard data.';
 }
 
 // Offline simulation when no API token is provided
